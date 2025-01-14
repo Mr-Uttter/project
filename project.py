@@ -299,55 +299,6 @@ class World(Entity):
             ic(player.y)
                 
 
-
-    def create_spikes(self):
-        self.spike = Entity(
-            model="cube",
-            color=color.red,
-            position=(5, 0, -3),
-            scale=(1.5, 1, 1.5),
-            name="spike",
-            collider="box",
-        )
-
-        self.spikes = []
-
-        for i in range(self.level):
-            spike = duplicate(
-                self.spike,
-                position=(
-                    random.randint(-self.height // 2, self.height // 2),
-                    0,
-                    random.randint(-self.width // 2, self.width // 2),
-                ),
-            )
-            self.spikes.append(spike)
-        ic("Spikes created")
-
-    def create_health_packs(self):
-        self.health_pack = Entity(
-            model="cube",
-            color=color.green,
-            position=(5, 0, -3),
-            scale=(1.5, 1.5, 1.5),
-            name="health_pack",
-            collider="box",
-        )
-
-        self.health_packs = []
-
-        for i in range(self.level):
-            health_pack = duplicate(
-                self.health_pack,
-                position=(
-                    random.randint(-self.height // 2, self.height // 2),
-                    0,
-                    random.randint(-self.width // 2, self.width // 2),
-                ),
-            )
-            self.health_packs.append(health_pack)
-        ic("Health packs created")
-
     def on_screen_text(self, message, position=(0, 0.45), origin=(0, 0), scale=2, c=color.black):
         if not hasattr(self, 'texts'):
             self.texts = []
@@ -368,29 +319,6 @@ class World(Entity):
             self.texts.remove(text_obj)
         destroy(text_obj)
 
-    def create_holes(self):
-        self.hole = Entity(
-            model="cube",
-            color=color.brown,
-            position=(5, -0.5, -3),
-            scale=(2, 2, 2),
-            name="hole",
-            collider="box",
-        )
-
-        self.holes = []
-
-        for i in range(self.level):
-            hole = duplicate(
-                self.hole,
-                position=(
-                    random.randint(-self.height // 2, self.height // 2),
-                    -0.5,
-                    random.randint(-self.width // 2, self.width // 2),
-                ),
-            )
-            self.holes.append(hole)
-        ic("Obstacles created")
 
     def create_boundry_walls(
         self,
@@ -400,7 +328,6 @@ class World(Entity):
         wall_color=color.gray,
         wall_texture="brick",
     ):
-        walls = []
 
         self.ground = Entity(
             model="cube",
@@ -411,98 +338,30 @@ class World(Entity):
             name="grass",
             collider="box",
         )
-        # Create boundry walls, top and bottom
-        for x in range(-width // 2, width // 2 + 1):
-            walls.append(
-                Entity(
-                    model="cube",
-                    color=wall_color,
-                    texture=wall_texture,
-                    position=(x, 1, -height // 2),
-                    scale=(1, wall_thickness, 1),
-                    collider="box",
-                    name="stop",
-                )
-            )
-            walls.append(
-                Entity(
-                    model="cube",
-                    color=wall_color,
-                    texture=wall_texture,
-                    position=(x, 1, height // 2),
-                    scale=(1, wall_thickness, 1),
-                    collider="box",
-                    name="stop",
-                )
-            )
-            walls.append(
-                Entity(
-                    model="cube",
-                    color=wall_color,
-                    texture=wall_texture,
-                    position=(x, 2, -height // 2),
-                    scale=(1, wall_thickness, 1),
-                    collider="box",
-                    name="stop",
-                )
-            )
-            walls.append(
-                Entity(
-                    model="cube",
-                    color=wall_color,
-                    texture=wall_texture,
-                    position=(x, 2, height // 2),
-                    scale=(1, wall_thickness, 1),
-                    collider="box",
-                    name="stop",
-                )
-            )
 
-        # Create boundry walls, left and right
+        wall_positions = []
+
+        for x in range(-width // 2, width // 2 + 1):
+            for y in (1, 2): 
+                wall_positions.append((x, y, -height // 2)) 
+                wall_positions.append((x, y, height // 2))  
+
+        
         for z in range(-height // 2, height // 2 + 1):
-            walls.append(
-                Entity(
-                    model="cube",
-                    color=wall_color,
-                    texture=wall_texture,
-                    position=(-width // 2, 1, z),
-                    scale=(1, wall_thickness, 1),
-                    collider="box",
-                    name="stop",
-                )
-            )
-            walls.append(
-                Entity(
-                    model="cube",
-                    color=wall_color,
-                    texture=wall_texture,
-                    position=(width // 2, 1, z),
-                    scale=(1, wall_thickness, 1),
-                    collider="box",
-                    name="stop",
-                )
-            )
-            walls.append(
-                Entity(
-                    model="cube",
-                    color=wall_color,
-                    texture=wall_texture,
-                    position=(-width // 2, 2, z),
-                    scale=(1, wall_thickness, 1),
-                    collider="box",
-                    name="stop",
-                )
-            )
-            walls.append(
-                Entity(
-                    model="cube",
-                    color=wall_color,
-                    texture=wall_texture,
-                    position=(width // 2, 2, z),
-                    scale=(1, wall_thickness, 1),
-                    collider="box",
-                    name="stop",
-                )
+            for y in (1, 2):  
+                wall_positions.append((-width // 2, y, z))  
+                wall_positions.append((width // 2, y, z))  
+
+        
+        for pos in wall_positions:
+            Entity(
+                model="cube",
+                color=wall_color,
+                texture=wall_texture,
+                position=pos,
+                scale=(1, wall_thickness, 1),
+                collider="box",
+                name="stop",
             )
 
 
@@ -629,4 +488,18 @@ if __name__ == "__main__":
 
 
 
-
+# Todo:
+# Create highscore button
+# Create highscore savefile
+# Create point system?
+# Limit height for player jumps
+# Better levels, dynamic level rotation, harder the further you go
+# Add defence for player, gun? Shield?
+# Sounds?
+# Add a goal, collect x and get to goal?
+# Add gates
+# Perhaps fix graphical attributes to make more appealing?
+#
+# Add some more comments as I go? 
+# Clean code from "IC" prints
+# 
