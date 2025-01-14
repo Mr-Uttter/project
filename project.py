@@ -17,10 +17,9 @@ class Player(Entity):
             name="player",
         )
         self.texture = "reflection_map_3"
-        self.origin=(0,0.25,0)
+        self.origin = (0, 0.25, 0)
         self.life = 100
         self.max_life = 100
-        
 
         ic("Player created")
 
@@ -31,7 +30,7 @@ class Player(Entity):
         speed = 5
         move_step = speed * time.dt
 
-        if held_keys["w"]:  
+        if held_keys["w"]:
             self.handle_movement(Vec3(0, 0, move_step), move_step)
 
         if held_keys["s"]:
@@ -49,11 +48,10 @@ class Player(Entity):
         if held_keys["down arrow"]:
             self.handle_movement(Vec3(0, -move_step, 0), move_step)
 
-
     def handle_movement(self, movement, move_step):
-        
+
         direction = movement.normalized()
-        cast_thickness = .5
+        cast_thickness = 0.5
         hit_info = boxcast(
             origin=self.position,
             thickness=cast_thickness,
@@ -64,7 +62,7 @@ class Player(Entity):
         )
 
         hit = False
-        
+
         if hit_info.hit:
             ic("Hit detected!")
             hit = self.player_collision(hit_info)
@@ -72,11 +70,8 @@ class Player(Entity):
             self.position += movement
             self.position += movement
 
-        
-
-
     def player_collision(self, hit_info):
-        """ Handles collision with entitys """
+        """Handles collision with entitys"""
         if hit_info.entity.name == "stop":
             return True
 
@@ -141,7 +136,6 @@ class Healthbar(Entity):
         ic(f"Health: {player.life}%")
 
 
-
 class World(Entity):
     def __init__(self):
         super().__init__()
@@ -154,9 +148,9 @@ class World(Entity):
         self.gravity = 9.8
         self.velocity_y = 0
         self.create_boundry_walls(self.width, self.height)
-        #self.create_holes()            # Randomly creates holes, for testing
-        #self.create_spikes()           # Randomly creates spikes, for testing
-        #self.create_health_packs()     # Randomly creates health packs, for testing
+        # self.create_holes()            # Randomly creates holes, for testing
+        # self.create_spikes()           # Randomly creates spikes, for testing
+        # self.create_health_packs()     # Randomly creates health packs, for testing
 
         ic("World created")
 
@@ -193,8 +187,19 @@ class World(Entity):
                 "walls": [
                     (x, 1, z)
                     for x, z in [
-                        (-10, -10), (-10, -9), (-10, -8), (-9, -8), (-8, -8), (-8, -7), (-8, -6),
-                        (-7, -6), (-6, -6), (-6, -5), (-6, -4), (-5, -4), (-4, -4),
+                        (-10, -10),
+                        (-10, -9),
+                        (-10, -8),
+                        (-9, -8),
+                        (-8, -8),
+                        (-8, -7),
+                        (-8, -6),
+                        (-7, -6),
+                        (-6, -6),
+                        (-6, -5),
+                        (-6, -4),
+                        (-5, -4),
+                        (-4, -4),
                     ]
                 ],
                 "health_packs": [(-4, 1, -4)],
@@ -204,11 +209,10 @@ class World(Entity):
                 "player_start": (-10, 3, -11),
                 "width": 30,
                 "height": 30,
-            }
+            },
         ]
 
         self.load_level()
-
 
     def load_level(self, level_index=2):
         """Laddar en specifik bana baserat på index."""
@@ -228,10 +232,8 @@ class World(Entity):
         self.height = level["height"]
         self.create_boundry_walls(self.width, self.height)
 
-        
         player.position = level["player_start"]
 
-        
         for wall_pos in level.get("walls", []):
             Entity(
                 model="cube",
@@ -277,10 +279,11 @@ class World(Entity):
             enemy = enemies.spawn_small_enemy(position=enemy_pos)
             enemies.enemy_entitys.append(enemy)
 
-
-    def apply_gravity(self,):
+    def apply_gravity(
+        self,
+    ):
         falling = raycast(
-            direction=Vec3(0,-1,0),
+            direction=Vec3(0, -1, 0),
             distance=0.5,
             origin=(player.position),
             ignore=(player,),
@@ -291,16 +294,23 @@ class World(Entity):
         ic(self.velocity_y)
         if not falling.hit:
             self.velocity_y -= self.gravity * time.dt
-            player.position = (player.position.x, player.position.y + self.velocity_y * time.dt, player.position.z)
+            player.position = (
+                player.position.x,
+                player.position.y + self.velocity_y * time.dt,
+                player.position.z,
+            )
             ic(player.position.y)
         else:
             self.velocity_y = 0
-            player.y = falling.world_point.y + 0.4  # +0.5 to land on ground, not partly inside
+            player.y = (
+                falling.world_point.y + 0.4
+            )  # +0.5 to land on ground, not partly inside
             ic(player.y)
-                
 
-    def on_screen_text(self, message, position=(0, 0.45), origin=(0, 0), scale=2, c=color.black):
-        if not hasattr(self, 'texts'):
+    def on_screen_text(
+        self, message, position=(0, 0.45), origin=(0, 0), scale=2, c=color.black
+    ):
+        if not hasattr(self, "texts"):
             self.texts = []
 
         # Adjust position for new messages
@@ -309,7 +319,9 @@ class World(Entity):
             position = (last_text.position[0], last_text.position[1] - 0.1)
 
         # Create text
-        new_text = Text(text=message, position=position, origin=origin, scale=scale, color=c)
+        new_text = Text(
+            text=message, position=position, origin=origin, scale=scale, color=c
+        )
 
         # Remove text
         invoke(self.remove_text, new_text, delay=2)
@@ -318,7 +330,6 @@ class World(Entity):
         if text_obj in self.texts:
             self.texts.remove(text_obj)
         destroy(text_obj)
-
 
     def create_boundry_walls(
         self,
@@ -342,17 +353,15 @@ class World(Entity):
         wall_positions = []
 
         for x in range(-width // 2, width // 2 + 1):
-            for y in (1, 2): 
-                wall_positions.append((x, y, -height // 2)) 
-                wall_positions.append((x, y, height // 2))  
+            for y in (1, 2):
+                wall_positions.append((x, y, -height // 2))
+                wall_positions.append((x, y, height // 2))
 
-        
         for z in range(-height // 2, height // 2 + 1):
-            for y in (1, 2):  
-                wall_positions.append((-width // 2, y, z))  
-                wall_positions.append((width // 2, y, z))  
+            for y in (1, 2):
+                wall_positions.append((-width // 2, y, z))
+                wall_positions.append((width // 2, y, z))
 
-        
         for pos in wall_positions:
             Entity(
                 model="cube",
@@ -369,55 +378,61 @@ class Enemies(Entity):
     def __init__(self):
         super().__init__()
         self.enemy_entitys = []
-        
 
-    def spawn_small_enemy(self, position=(5,0,2), color=color.azure, health=50, damage= 8, speed=2, attack_range=8, attack_speed=0.3):
-        enemy = Entity(
-            model="cube", 
-            scale=(1, 2, 1), 
-            collider="box"
-        )
+    def spawn_small_enemy(
+        self,
+        position=(5, 0, 2),
+        color=color.azure,
+        health=50,
+        damage=8,
+        speed=2,
+        attack_range=8,
+        attack_speed=0.3,
+    ):
+        enemy = Entity(model="cube", scale=(1, 2, 1), collider="box")
         # Enemy attributes
         enemy.position = position
         enemy.color = color
         enemy.health = health
         enemy.damage = damage
         enemy.speed = speed
-        enemy.attack_range = attack_range  
+        enemy.attack_range = attack_range
         enemy.attack_speed = attack_speed
         enemy.enabled = True
 
         self.enemy_entitys.append(enemy)
         ic(f"Spawned {len(self.enemy_entitys)} enemies")
 
-
     def enemy_move(self):
         for enemy in self.enemy_entitys:
             if enemy is None:
-                continue 
-            
+                continue
+
             if player is None:
-                continue 
-            
+                continue
+
             # Calculate distance to player
             distance_to_player = distance(player.position, enemy.position)
 
             if distance_to_player <= enemy.attack_range:
                 enemy.look_at(player)  # Look at player
 
-                if distance_to_player > 1:  # If enemy within range, but to far, walk towards player
+                if (
+                    distance_to_player > 1
+                ):  # If enemy within range, but to far, walk towards player
                     direction = (player.position - enemy.position).normalized()
                     enemy.position += direction * enemy.speed * time.dt
 
                 else:  # Enemy attack if within range
-                    invoke(healthbar.take_damage, enemy.damage, delay=enemy.attack_speed)
+                    invoke(
+                        healthbar.take_damage, enemy.damage, delay=enemy.attack_speed
+                    )
                     world.on_screen_text("You have been attacked!", color.red)
-
 
 
 class GameCamera:
     def __init__(self, target):
-        self.target = target 
+        self.target = target
         ic("Camera initialized")
 
     def update_camera(self):
@@ -436,8 +451,9 @@ screen = None
 game_started = False  # Flag if game is running
 player = None
 
+
 def start_game():
-    """ Hide the main menu and start game """
+    """Hide the main menu and start game"""
     global screen, player, game_started
     game_started = True  # Flag if game is running
     instanciate()
@@ -447,20 +463,22 @@ def start_game():
 
     print("Game started!")
 
+
 def show_menu():
-    """ Main Menu """
+    """Main Menu"""
     global screen
     screen = Entity(parent=camera.ui)
 
     # Create menybuttons
     Button("Play", parent=screen, scale=(0.2, 0.1), y=0.1, on_click=start_game)
-    # HighScoreButton that show top 10 
+    # HighScoreButton that show top 10
     # "settings" for choosing diffuculty, pherhaps easy, medium and hard?
     Button("Quit", parent=screen, scale=(0.2, 0.1), y=-0.1, on_click=application.quit)
 
+
 def instanciate():
     global player, world, healthbar, game_camera, enemies
-    if game_started:      
+    if game_started:
         player = Player()
         healthbar = Healthbar()
         game_camera = GameCamera(player)
@@ -480,12 +498,11 @@ def update():
 
         enemies.enemy_move()
 
+
 # Run the game part
 if __name__ == "__main__":
     show_menu()  # Shows the menu first
     app.run()
-
-
 
 
 # Todo:
@@ -500,6 +517,6 @@ if __name__ == "__main__":
 # Add gates
 # Perhaps fix graphical attributes to make more appealing?
 #
-# Add some more comments as I go? 
+# Add some more comments as I go?
 # Clean code from "IC" prints
-# 
+#
