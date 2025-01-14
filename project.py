@@ -12,12 +12,12 @@ class Player(Entity):
             model="sphere",
             color=color.orange,
             scale=(0.75, 0.75, 0.75),
-            position=(0, 5, 0),
+            position=(0, 3, 0),
             collider="box",
             name="player",
         )
         self.texture = "reflection_map_3"
-        self.origin=(0,0,0)
+        self.origin=(0,0.25,0)
         self.life = 100
         self.max_life = 100
         
@@ -31,7 +31,7 @@ class Player(Entity):
         speed = 5
         move_step = speed * time.dt
 
-        if held_keys["w"]:  # Framåt
+        if held_keys["w"]:  
             self.handle_movement(Vec3(0, 0, move_step), move_step)
 
         if held_keys["s"]:
@@ -53,10 +53,12 @@ class Player(Entity):
     def handle_movement(self, movement, move_step):
         
         direction = movement.normalized()
-        hit_info = raycast(
+        cast_thickness = .5
+        hit_info = boxcast(
             origin=self.position,
+            thickness=cast_thickness,
             direction=direction,
-            distance=move_step +0.1,
+            distance=move_step + 0.3,
             ignore=(self,),
             debug=True,
         )
@@ -70,7 +72,7 @@ class Player(Entity):
             self.position += movement
             self.position += movement
 
-        world.apply_gravity(hit_info)
+        
 
 
     def player_collision(self, hit_info):
@@ -158,18 +160,79 @@ class World(Entity):
 
         ic("World created")
 
+        self.levels = [
+            {
+                "Level one"
+                "walls": [
+                    (x, 1, z)
+                    for x in range(-14, 15, 3)
+                    for z in range(-14, 15, 3)
+                    if (x + z) % 2 == 0
+                ],
+                "health_packs": [(0, 1, -10), (-10, 1, 10)],
+                "spikes": [(3, 1, 3), (-3, 1, -3), (6, 1, -6)],
+                "holes": [(0, -0.5, 5), (-5, -0.5, -5)],
+                "enemies": [(-10, 1, -10), (10, 1, 10)],
+                "player_start": (0, 3, 0),
+                "width": 30,
+                "height": 30,
+            },
+            {
+                # Level two
+                "walls": [],
+                "health_packs": [(5, 1, -5)],
+                "spikes": [(0, 1, z) for z in range(-14, 15, 4)],
+                "holes": [(-5, -0.5, z) for z in range(-14, 15, 8)],
+                "enemies": [(-10, 1, -10), (0, 1, -10), (10, 1, 10)],
+                "player_start": (-10, 3, -12),
+                "width": 30,
+                "height": 30,
+            },
+            {
+                # Level three
+                "walls": [
+                    (x, 1, z)
+                    for x, z in [
+                        (-10, -10), (-10, -9), (-10, -8), (-9, -8), (-8, -8), (-8, -7), (-8, -6),
+                        (-7, -6), (-6, -6), (-6, -5), (-6, -4), (-5, -4), (-4, -4),
+                    ]
+                ],
+                "health_packs": [(-4, 1, -4)],
+                "spikes": [(0, 1, 0)],
+                "holes": [],
+                "enemies": [(4, 1, 4)],
+                "player_start": (-10, 3, -11),
+                "width": 30,
+                "height": 30,
+            }
+        ]
 
-        self.level_data = {
-            "walls": [(0, 1, 5), (1, 1, 5), (2, 1, 5), (-1, 1, 5)],  
-            "health_packs": [(3, 0, -3), (-4, 0, 2)],
-            "spikes": [(2, 0, 2), (-2, 0, -2)],
-            "holes": [(0, -0.5, -5), (-3, -0.5, 4)],
-            "enemies": [(5, 0, -3), (-5, 0, 3)],
-        }
         self.load_level()
-    def load_level(self,):
-        """ Creates level from level data """
-        for wall_pos in self.level_data.get("walls", []):
+
+
+    def load_level(self, level_index=2):
+        """Laddar en specifik bana baserat på index."""
+        if level_index < 0 or level_index >= len(self.levels):
+            print("Level index out of range!")
+            return
+
+        level = self.levels[level_index]
+
+        # Destroy old level
+        destroy(self.ground)
+        for e in self.children:
+            destroy(e)
+
+        # Load objects and borders
+        self.width = level["width"]
+        self.height = level["height"]
+        self.create_boundry_walls(self.width, self.height)
+
+        
+        player.position = level["player_start"]
+
+        
+        for wall_pos in level.get("walls", []):
             Entity(
                 model="cube",
                 color=color.gray,
@@ -180,7 +243,7 @@ class World(Entity):
                 name="stop",
             )
 
-        for health_pack_pos in self.level_data.get("health_packs", []):
+        for health_pack_pos in level.get("health_packs", []):
             Entity(
                 model="cube",
                 color=color.green,
@@ -190,7 +253,7 @@ class World(Entity):
                 collider="box",
             )
 
-        for spike_pos in self.level_data.get("spikes", []):
+        for spike_pos in level.get("spikes", []):
             Entity(
                 model="cube",
                 color=color.red,
@@ -200,7 +263,7 @@ class World(Entity):
                 collider="box",
             )
 
-        for hole_pos in self.level_data.get("holes", []):
+        for hole_pos in level.get("holes", []):
             Entity(
                 model="cube",
                 color=color.brown,
@@ -210,12 +273,12 @@ class World(Entity):
                 collider="box",
             )
 
-        for enemy_pos in self.level_data.get("enemies", []):
+        for enemy_pos in level.get("enemies", []):
             enemy = enemies.spawn_small_enemy(position=enemy_pos)
             enemies.enemy_entitys.append(enemy)
 
 
-    def apply_gravity(self, hit_info):
+    def apply_gravity(self,):
         falling = raycast(
             direction=Vec3(0,-1,0),
             distance=0.5,
@@ -224,18 +287,16 @@ class World(Entity):
             debug=True,
             color=color.red,
         )
-        
-        try:
-            if falling.entity.name == "grass":
-                self.velocity_y = 0  # Återställ hastigheten om spelaren är på marken
-                player.position.y = 0
-            else:
-                self.velocity_y -= world.gravity * time.dt
-                player.y += self.velocity_y * time.dt
 
-        except AttributeError:
-            self.velocity_y -= world.gravity * time.dt
-            self.y += self.velocity_y * time.dt
+        ic(self.velocity_y)
+        if not falling.hit:
+            self.velocity_y -= self.gravity * time.dt
+            player.position = (player.position.x, player.position.y + self.velocity_y * time.dt, player.position.z)
+            ic(player.position.y)
+        else:
+            self.velocity_y = 0
+            player.y = falling.world_point.y + 0.4  # +0.5 to land on ground, not partly inside
+            ic(player.y)
                 
 
 
@@ -344,7 +405,7 @@ class World(Entity):
         self.ground = Entity(
             model="cube",
             color=color.green,
-            position=(0, 0, 0),
+            position=(0, 0.25, 0),
             scale=(width, 0, height),
             texture="grass",
             name="grass",
@@ -474,11 +535,9 @@ class Enemies(Entity):
     def enemy_move(self):
         for enemy in self.enemy_entitys:
             if enemy is None:
-                ic("Enemy is None!")
                 continue 
             
             if player is None:
-                ic("Player is None!")
                 continue 
             
             # Calculate distance to player
@@ -552,13 +611,14 @@ def instanciate():
 
 def update():
     if game_started:
+        world.apply_gravity()
         player.move()
         game_camera.update_camera()
         if held_keys["l"]:
             healthbar.take_damage(1)
         if held_keys["k"]:
             healthbar.gain_health(1)
-        #world.apply_gravity()
+
         enemies.enemy_move()
 
 # Run the game part
