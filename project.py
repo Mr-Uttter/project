@@ -17,7 +17,7 @@ class Player(Entity):
             name="player",
         )
         self.texture = "reflection_map_3"
-        self.origin=(0,-1,0)
+        self.origin=(0,0,0)
         self.life = 100
         self.max_life = 100
         
@@ -32,44 +32,43 @@ class Player(Entity):
         move_step = speed * time.dt
 
         if held_keys["w"]:  # Framåt
-            self.handle_movement(Vec3(0, -0.5, move_step))
+            self.handle_movement(Vec3(0, 0, move_step), move_step)
 
         if held_keys["s"]:
-            self.handle_movement(Vec3(0, -0.5, -move_step))
+            self.handle_movement(Vec3(0, 0, -move_step), move_step)
 
         if held_keys["a"]:
-            self.handle_movement(Vec3(-move_step, -0.5, 0))
+            self.handle_movement(Vec3(-move_step, 0, 0), move_step)
 
         if held_keys["d"]:
-            self.handle_movement(Vec3(move_step, -0.5, 0))
+            self.handle_movement(Vec3(move_step, 0, 0), move_step)
 
         if held_keys["space"]:
-            self.handle_movement(Vec3(0, move_step, 0))
+            self.handle_movement(Vec3(0, move_step, 0), move_step)
 
         if held_keys["down arrow"]:
-            self.handle_movement(Vec3(0, -move_step, 0))
+            self.handle_movement(Vec3(0, -move_step, 0), move_step)
 
 
-    def handle_movement(self, movement):
+    def handle_movement(self, movement, move_step):
         
         direction = movement.normalized()
         hit_info = raycast(
             origin=self.position,
             direction=direction,
-            distance=movement.length() + 0.1,
+            distance=move_step +0.1,
             ignore=(self,),
             debug=True,
         )
 
-        if not hit_info.hit:
-            self.position.x += movement[0]
-            self.position.z += movement[2]
-        else:
+        hit = False
+        
+        if hit_info.hit:
             ic("Hit detected!")
             hit = self.player_collision(hit_info)
-            if not hit:
-                self.position.x += movement[0]
-                self.position.z += movement[2]
+        if not hit:
+            self.position += movement
+            self.position += movement
 
         world.apply_gravity(hit_info)
 
@@ -153,9 +152,9 @@ class World(Entity):
         self.gravity = 9.8
         self.velocity_y = 0
         self.create_boundry_walls(self.width, self.height)
-        #self.create_holes()
-        #self.create_spikes()
-        #self.create_health_packs()
+        #self.create_holes()            # Randomly creates holes, for testing
+        #self.create_spikes()           # Randomly creates spikes, for testing
+        #self.create_health_packs()     # Randomly creates health packs, for testing
 
         ic("World created")
 
@@ -217,12 +216,26 @@ class World(Entity):
 
 
     def apply_gravity(self, hit_info):
+        falling = raycast(
+            direction=Vec3(0,-1,0),
+            distance=0.5,
+            origin=(player.position),
+            ignore=(player,),
+            debug=True,
+            color=color.red,
+        )
+        
+        try:
+            if falling.entity.name == "grass":
+                self.velocity_y = 0  # Återställ hastigheten om spelaren är på marken
+                player.position.y = 0
+            else:
+                self.velocity_y -= world.gravity * time.dt
+                player.y += self.velocity_y * time.dt
 
-        if not hit_info.hit:
+        except AttributeError:
             self.velocity_y -= world.gravity * time.dt
             self.y += self.velocity_y * time.dt
-        else:
-            self.velocity_y = 0  # Återställ hastigheten om spelaren är på marken
                 
 
 
@@ -329,7 +342,7 @@ class World(Entity):
         walls = []
 
         self.ground = Entity(
-            model="plane",
+            model="cube",
             color=color.green,
             position=(0, 0, 0),
             scale=(width, 0, height),
