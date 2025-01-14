@@ -11,56 +11,71 @@ class Player(Entity):
         super().__init__(
             model="sphere",
             color=color.orange,
-            scale=(0.5, 0.5, 0.5),
-            position=(0, 8, 0),
+            scale=(0.75, 0.75, 0.75),
+            position=(0, 5, 0),
             collider="box",
             name="player",
         )
         self.texture = "reflection_map_3"
+        self.origin=(0,-1,0)
         self.life = 100
         self.max_life = 100
-        self.velocity_y = 0
+        
 
         ic("Player created")
 
     def ball_rolling_effect(self):
-
         pass
 
     def move(self):
         speed = 5
         move_step = speed * time.dt
-        directions = {
-            "w": (0, 0, move_step),
-            "s": (0, 0, -move_step),
-            "a": (-move_step, 0, 0),
-            "d": (move_step, 0, 0),
-            "space": (0, move_step, 0),
-            "down arrow": (0, -move_step, 0),
-        }
 
-        for key, movement in directions.items():
-            if held_keys[key]:
-                # Kontrollera rörelseriktningen med raycast
-                direction = Vec3(movement[0], movement[1], movement[2]).normalized()
-                hit_info = raycast(
-                    origin=self.position,
-                    direction=direction,
-                    distance=move_step + 0.1,
-                    ignore=(self,),
-                    debug=True,
-                )
+        if held_keys["w"]:  # Framåt
+            self.handle_movement(Vec3(0, -0.5, move_step))
 
-                if hit_info.hit:
-                    ic("Hit detected!")
-                    hit = self.player_collision(hit_info)
-                    if not hit:
-                        self.x += movement[0]
-                        self.y += movement[1]
-                        self.z += movement[2]
+        if held_keys["s"]:
+            self.handle_movement(Vec3(0, -0.5, -move_step))
+
+        if held_keys["a"]:
+            self.handle_movement(Vec3(-move_step, -0.5, 0))
+
+        if held_keys["d"]:
+            self.handle_movement(Vec3(move_step, -0.5, 0))
+
+        if held_keys["space"]:
+            self.handle_movement(Vec3(0, move_step, 0))
+
+        if held_keys["down arrow"]:
+            self.handle_movement(Vec3(0, -move_step, 0))
+
+
+    def handle_movement(self, movement):
+        
+        direction = movement.normalized()
+        hit_info = raycast(
+            origin=self.position,
+            direction=direction,
+            distance=movement.length() + 0.1,
+            ignore=(self,),
+            debug=True,
+        )
+
+        if not hit_info.hit:
+            self.position.x += movement[0]
+            self.position.z += movement[2]
+        else:
+            ic("Hit detected!")
+            hit = self.player_collision(hit_info)
+            if not hit:
+                self.position.x += movement[0]
+                self.position.z += movement[2]
+
+        world.apply_gravity(hit_info)
+
 
     def player_collision(self, hit_info):
-        """Hanterar kollisioner och returnerar True om rörelsen ska blockeras."""
+        """ Handles collision with entitys """
         if hit_info.entity.name == "stop":
             return True
 
@@ -91,7 +106,7 @@ class Healthbar(Entity):
             scale=(0.2, 0.01),
             position=(-0.85, 0.45),
             parent=camera.ui,
-        )  # Bakgrund för healthbar
+        )  # Red part of healthbar
         self.healthbar = duplicate(
             self.healthbar_bg, color=color.green, position=(-0.85, 0.45)
         )
@@ -120,7 +135,7 @@ class Healthbar(Entity):
         self.update_healthbar()
 
     def update_healthbar(self):
-        # Uppdatera healthbarens gröna del baserat på liv
+        # Green part of healthbar update
         self.healthbar.scale_x = player.life / player.max_life * 0.2
         ic(f"Health: {player.life}%")
 
@@ -136,7 +151,7 @@ class World(Entity):
         self.width = 30
         self.height = 30
         self.gravity = 9.8
-
+        self.velocity_y = 0
         self.create_boundry_walls(self.width, self.height)
         #self.create_holes()
         #self.create_spikes()
@@ -146,15 +161,15 @@ class World(Entity):
 
 
         self.level_data = {
-            "walls": [(0, 1, 5), (1, 1, 5), (2, 1, 5), (-1, 1, 5)],  # Positioner för väggar
-            "health_packs": [(3, 0, -3), (-4, 0, 2)],               # Positioner för healthpacks
-            "spikes": [(2, 0, 2), (-2, 0, -2)],                    # Positioner för spikar
-            "holes": [(0, -0.5, -5), (-3, -0.5, 4)],               # Positioner för hål
-            "enemies": [(5, 0, -3), (-5, 0, 3)],                   # Positioner för fiender
+            "walls": [(0, 1, 5), (1, 1, 5), (2, 1, 5), (-1, 1, 5)],  
+            "health_packs": [(3, 0, -3), (-4, 0, 2)],
+            "spikes": [(2, 0, 2), (-2, 0, -2)],
+            "holes": [(0, -0.5, -5), (-3, -0.5, 4)],
+            "enemies": [(5, 0, -3), (-5, 0, 3)],
         }
         self.load_level()
     def load_level(self,):
-        """Laddar ett definierat self.level_data och skapar objekten."""
+        """ Creates level from level data """
         for wall_pos in self.level_data.get("walls", []):
             Entity(
                 model="cube",
@@ -201,21 +216,14 @@ class World(Entity):
             enemies.enemy_entitys.append(enemy)
 
 
-    def apply_gravity(self):
-        gravity_info = raycast(
-            origin=player.position,
-            direction=(0, -1, 0),
-            distance=0.5,
-            ignore=(player,),
-            color=color.red,
-            debug=True,
-        )
-        if not gravity_info.hit or gravity_info.entity.name == "hole":
-            player.velocity_y -= self.gravity * time.dt
-            player.y += player.velocity_y * time.dt  # Ensure time.dt is applied here
+    def apply_gravity(self, hit_info):
+
+        if not hit_info.hit:
+            self.velocity_y -= world.gravity * time.dt
+            self.y += self.velocity_y * time.dt
         else:
-            player.velocity_y = 0  # Reset velocity when hitting the ground
-            
+            self.velocity_y = 0  # Återställ hastigheten om spelaren är på marken
+                
 
 
     def create_spikes(self):
@@ -270,15 +278,15 @@ class World(Entity):
         if not hasattr(self, 'texts'):
             self.texts = []
 
-        # Justera position för nya meddelanden
+        # Adjust position for new messages
         if self.texts:
             last_text = self.texts[-1]
             position = (last_text.position[0], last_text.position[1] - 0.1)
 
-        # Skapa textobjektet
+        # Create text
         new_text = Text(text=message, position=position, origin=origin, scale=scale, color=c)
 
-        # Ta bort text efter en fördröjning
+        # Remove text
         invoke(self.remove_text, new_text, delay=2)
 
     def remove_text(self, text_obj):
@@ -329,7 +337,7 @@ class World(Entity):
             name="grass",
             collider="box",
         )
-        # Skapa väggar längs X-axeln (övre och nedre kanten)
+        # Create boundry walls, top and bottom
         for x in range(-width // 2, width // 2 + 1):
             walls.append(
                 Entity(
@@ -376,7 +384,7 @@ class World(Entity):
                 )
             )
 
-        # Skapa väggar längs Z-axeln (vänster och höger kant)
+        # Create boundry walls, left and right
         for z in range(-height // 2, height // 2 + 1):
             walls.append(
                 Entity(
@@ -436,17 +444,16 @@ class Enemies(Entity):
             scale=(1, 2, 1), 
             collider="box"
         )
-        # Tilldela egenskaper till fienden
+        # Enemy attributes
         enemy.position = position
         enemy.color = color
         enemy.health = health
         enemy.damage = damage
         enemy.speed = speed
-        enemy.attack_range = attack_range  # Fiendens egna attack_range
+        enemy.attack_range = attack_range  
         enemy.attack_speed = attack_speed
         enemy.enabled = True
 
-        # Lägg till fienden i listan
         self.enemy_entitys.append(enemy)
         ic(f"Spawned {len(self.enemy_entitys)} enemies")
 
@@ -455,24 +462,23 @@ class Enemies(Entity):
         for enemy in self.enemy_entitys:
             if enemy is None:
                 ic("Enemy is None!")
-                continue  # Hoppa över den här fienden om den är None
+                continue 
             
             if player is None:
                 ic("Player is None!")
-                continue  # Hoppa över om spelaren inte är definierad
+                continue 
             
-            # Räkna ut avståndet mellan spelaren och fienden
+            # Calculate distance to player
             distance_to_player = distance(player.position, enemy.position)
 
-            # Om fienden är inom attack_range, utför attack
             if distance_to_player <= enemy.attack_range:
-                enemy.look_at(player)  # Fienden tittar på spelaren
+                enemy.look_at(player)  # Look at player
 
-                if distance_to_player > 1:  # Om fienden inte är för nära, rör sig mot spelaren
+                if distance_to_player > 1:  # If enemy within range, but to far, walk towards player
                     direction = (player.position - enemy.position).normalized()
                     enemy.position += direction * enemy.speed * time.dt
 
-                else:  # Attackera om fienden är tillräckligt nära
+                else:  # Enemy attack if within range
                     invoke(healthbar.take_damage, enemy.damage, delay=enemy.attack_speed)
                     world.on_screen_text("You have been attacked!", color.red)
 
@@ -480,11 +486,11 @@ class Enemies(Entity):
 
 class GameCamera:
     def __init__(self, target):
-        self.target = target  # Spelaren som kameran ska följa
+        self.target = target 
         ic("Camera initialized")
 
     def update_camera(self):
-        # Interpolera kamerans position
+        # Camera Position
         camera.position = lerp(
             camera.position,
             (self.target.x, self.target.y + 20, self.target.z - 20),
@@ -493,30 +499,32 @@ class GameCamera:
         camera.look_at(self.target)
 
 
-# Variabler för spelet och menyn
+# Game/Menu variables
 loaded_entity = {}
 screen = None
-game_started = False  # Håller koll på om spelet startat
+game_started = False  # Flag if game is running
 player = None
 
 def start_game():
-    """Startar spelet genom att skapa spelobjekt och dölja menyn."""
+    """ Hide the main menu and start game """
     global screen, player, game_started
-    game_started = True  # Indikerar att spelet är igång
+    game_started = True  # Flag if game is running
     instanciate()
-    # Ta bort menyn
+    # Destroy menu
     if screen:
         destroy(screen)
 
     print("Game started!")
 
 def show_menu():
-    """Visar huvudmenyn."""
+    """ Main Menu """
     global screen
     screen = Entity(parent=camera.ui)
 
-    # Skapa menyknappar
+    # Create menybuttons
     Button("Play", parent=screen, scale=(0.2, 0.1), y=0.1, on_click=start_game)
+    # HighScoreButton that show top 10 
+    # "settings" for choosing diffuculty, pherhaps easy, medium and hard?
     Button("Quit", parent=screen, scale=(0.2, 0.1), y=-0.1, on_click=application.quit)
 
 def instanciate():
@@ -529,20 +537,20 @@ def instanciate():
         world = World()
 
 
-#def update():
+def update():
     if game_started:
+        player.move()
         game_camera.update_camera()
         if held_keys["l"]:
             healthbar.take_damage(1)
         if held_keys["k"]:
             healthbar.gain_health(1)
-        player.move()
-        world.apply_gravity()
+        #world.apply_gravity()
         enemies.enemy_move()
 
-# Kör spelet
+# Run the game part
 if __name__ == "__main__":
-    show_menu()  # Visa menyn först
+    show_menu()  # Shows the menu first
     app.run()
 
 
